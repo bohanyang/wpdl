@@ -117,7 +117,7 @@ $downloaderExtra = new Downloader($httpClient, $uploader, $specsExtra);
 
 $database = new LeanCloud(
     $httpClient,
-    \getenv('LEANCLOUD_API_SERVER'),
+    \getenv('LEANCLOUD_API_SERVER') . '/1.1/',
     \getenv('LEANCLOUD_APP_ID'),
     \getenv('LEANCLOUD_APP_KEY'),
     \getenv('LEANCLOUD_SESSION_TOKEN')
