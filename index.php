@@ -8,7 +8,6 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Monolog\Processor\PsrLogMessageProcessor;
 use Psr\Log\LoggerAwareInterface;
-use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpClient\Response\StreamWrapper;
 use Symfony\Component\HttpClient\Retry\GenericRetryStrategy;
@@ -21,8 +20,8 @@ require __DIR__ . '/vendor/autoload.php';
 function videoDownloader(HttpClientInterface $httpClient, string $videoUrl, UploaderInterface $uploader)
 {
     if (
-        substr($videoUrl, 0, 37) !== '//az29176.vo.msecnd.net/videocontent/' ||
-        substr($videoUrl, -4) !== '.mp4'
+        !\str_starts_with($videoUrl, '//az29176.vo.msecnd.net/videocontent/') ||
+        !\str_ends_with($videoUrl, '.mp4')
     ) {
         throw new \UnexpectedValueException("Got unexpected video URL: $videoUrl");
     }
@@ -127,8 +126,10 @@ $images = $database->query('Image', ['where' => ['available' => false]])['result
 
 foreach ($images as $image) {
     ($image['wp'] ? $downloaderExtra : $downloader)($image['urlbase']);
+
     if (null !== $videoUrl = $image['vid']['sources'][1][2] ?? null) {
         videoDownloader($httpClient, $videoUrl, $videoUploader);
     }
+
     $database->update('Image', $image['objectId'], ['available' => true]);
 }

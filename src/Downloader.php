@@ -22,7 +22,7 @@ class Downloader
 
     public function __invoke(string $urlBase) : void
     {
-        if (substr($urlBase, 0, 16) !== '/az/hprichbg/rb/') {
+        if (!\str_starts_with($urlBase, '/az/hprichbg/rb/')) {
             throw new \UnexpectedValueException("Got unexpected URL base: $urlBase");
         }
 
