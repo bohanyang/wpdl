@@ -8,6 +8,7 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Monolog\Processor\PsrLogMessageProcessor;
 use Psr\Log\LoggerAwareInterface;
+use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpClient\Response\StreamWrapper;
 use Symfony\Component\HttpClient\Retry\GenericRetryStrategy;
@@ -16,6 +17,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use function Safe\substr;
 
 require __DIR__ . '/vendor/autoload.php';
+
+if (\is_file(__DIR__ . '/.env')) {
+    (new Dotenv())->bootEnv(__DIR__ . '/.env');
+}
 
 function videoDownloader(HttpClientInterface $httpClient, string $videoUrl, UploaderInterface $uploader)
 {
@@ -37,23 +42,28 @@ function videoDownloader(HttpClientInterface $httpClient, string $videoUrl, Uplo
 }
 
 $httpClient = HttpClient::create(['max_redirects' => 0]);
+$s3HttpClient = HttpClient::create(['max_redirects' => 0]);
 $httpLogger = new Logger('http', [new StreamHandler('php://stderr')], [new PsrLogMessageProcessor()]);
 
 if ($httpClient instanceof LoggerAwareInterface) {
     $httpClient->setLogger($httpLogger);
 }
 
+if ($s3HttpClient instanceof LoggerAwareInterface) {
+    $s3HttpClient->setLogger($httpLogger);
+}
+
 $s3RetryCodes = GenericRetryStrategy::DEFAULT_RETRY_STATUS_CODES;
 $retryCodes[408] = GenericRetryStrategy::IDEMPOTENT_METHODS;
 $s3RetryCodes[404] = 404; // Bucket not found
-$s3HttpClient = new RetryableHttpClient($httpClient, new AwsRetryStrategy($s3RetryCodes), 3, $httpLogger);
+$s3HttpClient = new RetryableHttpClient($s3HttpClient, new AwsRetryStrategy($s3RetryCodes), 3, $httpLogger);
 
 $s3r1 = new S3Client(
     [
-        'endpoint' => \getenv('S3_ENDPOINT'),
-        'accessKeyId' => \getenv('AWS_ACCESS_KEY_ID'),
-        'accessKeySecret' => \getenv('AWS_SECRET_ACCESS_KEY'),
-        'region' => \getenv('AWS_DEFAULT_REGION'),
+        'endpoint' => $_SERVER['S3_ENDPOINT'],
+        'accessKeyId' => $_SERVER['AWS_ACCESS_KEY_ID'],
+        'accessKeySecret' => $_SERVER['AWS_SECRET_ACCESS_KEY'],
+        'region' => $_SERVER['AWS_DEFAULT_REGION'],
         'pathStyleEndpoint' => true,
         'sendChunkedBody' => false
     ],
@@ -63,10 +73,10 @@ $s3r1 = new S3Client(
 
 $s3r2 = new S3Client(
     [
-        'endpoint' => \getenv('S3_ENDPOINT_2'),
-        'accessKeyId' => \getenv('AWS_ACCESS_KEY_ID_2'),
-        'accessKeySecret' => \getenv('AWS_SECRET_ACCESS_KEY_2'),
-        'region' => \getenv('AWS_DEFAULT_REGION_2'),
+        'endpoint' => $_SERVER['S3_ENDPOINT_2'],
+        'accessKeyId' => $_SERVER['AWS_ACCESS_KEY_ID_2'],
+        'accessKeySecret' => $_SERVER['AWS_SECRET_ACCESS_KEY_2'],
+        'region' => $_SERVER['AWS_DEFAULT_REGION_2'],
         'pathStyleEndpoint' => true,
         'sendChunkedBody' => false
     ],
@@ -75,20 +85,20 @@ $s3r2 = new S3Client(
 );
 
 $uploader = new ReplicateUploader(
-    new S3Uploader($s3r1, \getenv('S3_BUCKET'), 'az/hprichbg/rb/', [
+    new S3Uploader($s3r1, $_SERVER['S3_BUCKET'], 'az/hprichbg/rb/', [
         'CacheControl' => 'max-age=31536000'
     ]),
-    new S3Uploader($s3r2, \getenv('S3_BUCKET_2'), 'az/hprichbg/rb/', [
+    new S3Uploader($s3r2, $_SERVER['S3_BUCKET_2'], 'az/hprichbg/rb/', [
         'CacheControl' => 'max-age=31536000',
         'ACL' => 'public-read'
     ])
 );
 
 $videoUploader = new ReplicateUploader(
-    new S3Uploader($s3r1, \getenv('S3_BUCKET'), 'videocontent/', [
+    new S3Uploader($s3r1, $_SERVER['S3_BUCKET'], 'videocontent/', [
         'CacheControl' => 'max-age=31536000'
     ]),
-    new S3Uploader($s3r2, \getenv('S3_BUCKET_2'), 'videocontent/', [
+    new S3Uploader($s3r2, $_SERVER['S3_BUCKET_2'], 'videocontent/', [
         'CacheControl' => 'max-age=31536000',
         'ACL' => 'public-read'
     ])
@@ -116,10 +126,10 @@ $downloaderExtra = new Downloader($httpClient, $uploader, $specsExtra);
 
 $database = new LeanCloud(
     $httpClient,
-    \getenv('LEANCLOUD_API_SERVER') . '/1.1/',
-    \getenv('LEANCLOUD_APP_ID'),
-    \getenv('LEANCLOUD_APP_KEY'),
-    \getenv('LEANCLOUD_SESSION_TOKEN')
+    $_SERVER['LEANCLOUD_API_SERVER'] . '/1.1/',
+    $_SERVER['LEANCLOUD_APP_ID'],
+    $_SERVER['LEANCLOUD_APP_KEY'],
+    $_SERVER['LEANCLOUD_SESSION_TOKEN']
 );
 
 $images = $database->query('Image', ['where' => ['available' => false]])['results'];
