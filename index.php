@@ -10,11 +10,10 @@ use Monolog\Processor\PsrLogMessageProcessor;
 use Psr\Log\LoggerAwareInterface;
 use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Component\HttpClient\Response\StreamWrapper;
 use Symfony\Component\HttpClient\Retry\GenericRetryStrategy;
 use Symfony\Component\HttpClient\RetryableHttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
-use function Safe\substr;
+use function Safe\{fclose, fopen, substr};
 
 require __DIR__ . '/vendor/autoload.php';
 
@@ -25,38 +24,36 @@ if (\is_file(__DIR__ . '/.env')) {
 function videoDownloader(HttpClientInterface $httpClient, string $videoUrl, UploaderInterface $uploader)
 {
     if (
-        !\str_starts_with($videoUrl, '//az29176.vo.msecnd.net/videocontent/') ||
+        !\str_starts_with($videoUrl, $prefix = '//az29176.vo.msecnd.net/videocontent/') ||
         !\str_ends_with($videoUrl, '.mp4')
     ) {
         throw new \UnexpectedValueException("Got unexpected video URL: $videoUrl");
     }
 
-    $response = $httpClient->request('GET', "https:$videoUrl");
-    $response->getHeaders();
+    $response = $httpClient->request('GET', "https:$videoUrl", [
+        'buffer' => $stream = fopen('php://temp', 'w+')
+    ]);
 
-    if ($response->getStatusCode() !== 200) {
-        throw new \UnexpectedValueException('Got non-200 status for request: ' . $response->getInfo('url'));
+    $data = $response->getContent();
+
+    if (\is_resource($stream)) {
+        fclose($stream);
     }
 
-    $uploader(substr($videoUrl, 37), StreamWrapper::createResource($response), 'video/mp4')();
+    $uploader(substr($videoUrl, \strlen($prefix)), $data, 'video/mp4')();
 }
 
 $httpClient = HttpClient::create(['max_redirects' => 0]);
-$s3HttpClient = HttpClient::create(['max_redirects' => 0]);
 $httpLogger = new Logger('http', [new StreamHandler('php://stderr')], [new PsrLogMessageProcessor()]);
 
 if ($httpClient instanceof LoggerAwareInterface) {
     $httpClient->setLogger($httpLogger);
 }
 
-if ($s3HttpClient instanceof LoggerAwareInterface) {
-    $s3HttpClient->setLogger($httpLogger);
-}
-
 $s3RetryCodes = GenericRetryStrategy::DEFAULT_RETRY_STATUS_CODES;
 $retryCodes[408] = GenericRetryStrategy::IDEMPOTENT_METHODS;
 $s3RetryCodes[404] = 404; // Bucket not found
-$s3HttpClient = new RetryableHttpClient($s3HttpClient, new AwsRetryStrategy($s3RetryCodes), 3, $httpLogger);
+$s3HttpClient = new RetryableHttpClient($httpClient, new AwsRetryStrategy($s3RetryCodes), 3, $httpLogger);
 
 $s3r1 = new S3Client(
     [

@@ -17,7 +17,7 @@ class ReplicateUploader implements UploaderInterface
         $results = [];
 
         foreach ($this->replicas as $replica) {
-            $results[] = $replica($path, \is_resource($contents) ? StreamShallowCopy::create($contents) : $contents, $contentType);
+            $results[] = $replica($path, $contents, $contentType);
         }
 
         return function () use ($results) {
