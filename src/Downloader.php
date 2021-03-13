@@ -22,11 +22,11 @@ class Downloader
 
     public function __invoke(string $urlBase) : void
     {
-        if (!\str_starts_with($urlBase, '/az/hprichbg/rb/')) {
+        if (!\str_starts_with($urlBase, $prefix = '/az/hprichbg/rb/')) {
             throw new \UnexpectedValueException("Got unexpected URL base: $urlBase");
         }
 
-        $urlBase = substr($urlBase, 16);
+        $urlBase = substr($urlBase, \strlen($prefix));
         $responsePool = new \SplObjectStorage();
 
         foreach ($this->specs as $urlSuffix => $spec) {

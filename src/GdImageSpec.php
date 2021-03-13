@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Safe\Exceptions\ImageException;
 use function Safe\getimagesize;
 
 abstract class GdImageSpec implements ImageSpecInterface
@@ -23,6 +24,25 @@ abstract class GdImageSpec implements ImageSpecInterface
     public function assertStream($stream) : void
     {
         [$width, $height, $type] = StreamUri::cast($stream, fn($uri) => getimagesize($uri));
+        $this->assert($width, $height, $type);
+    }
+
+    public function assertFile(string $path) : void
+    {
+        [$width, $height, $type] = getimagesize($path);
+        $this->assert($width, $height, $type);
+    }
+
+    public function assertBinary(string $data) : void
+    {
+        \error_clear_last();
+        $result = \getimagesizefromstring($data);
+
+        if ($result === false) {
+            throw ImageException::createFromPhpError();
+        }
+
+        [$width, $height, $type] = $result;
         $this->assert($width, $height, $type);
     }
 }
