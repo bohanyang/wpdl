@@ -55,7 +55,7 @@ $retryCodes[408] = GenericRetryStrategy::IDEMPOTENT_METHODS;
 $s3RetryCodes[404] = 404; // Bucket not found
 $s3HttpClient = new RetryableHttpClient($httpClient, new AwsRetryStrategy($s3RetryCodes), 3, $httpLogger);
 
-$s3r1 = new S3Client(
+$s3_1 = new S3Client(
     [
         'endpoint' => $_SERVER['S3_ENDPOINT'],
         'accessKeyId' => $_SERVER['AWS_ACCESS_KEY_ID'],
@@ -65,10 +65,10 @@ $s3r1 = new S3Client(
         'sendChunkedBody' => false
     ],
     httpClient: $s3HttpClient,
-    logger: new Logger('s3r1', [new StreamHandler('php://stderr')], [new PsrLogMessageProcessor()])
+    logger: new Logger('s3_1', [new StreamHandler('php://stderr')], [new PsrLogMessageProcessor()])
 );
 
-$s3r2 = new S3Client(
+$s3_2 = new S3Client(
     [
         'endpoint' => $_SERVER['S3_ENDPOINT_2'],
         'accessKeyId' => $_SERVER['AWS_ACCESS_KEY_ID_2'],
@@ -78,27 +78,42 @@ $s3r2 = new S3Client(
         'sendChunkedBody' => false
     ],
     httpClient: $s3HttpClient,
-    logger: new Logger('s3r2', [new StreamHandler('php://stderr')], [new PsrLogMessageProcessor()])
+    logger: new Logger('s3_2', [new StreamHandler('php://stderr')], [new PsrLogMessageProcessor()])
+);
+
+$s3_3 = new S3Client(
+    [
+        'endpoint' => $_SERVER['S3_ENDPOINT_3'],
+        'accessKeyId' => $_SERVER['AWS_ACCESS_KEY_ID_3'],
+        'accessKeySecret' => $_SERVER['AWS_SECRET_ACCESS_KEY_3'],
+        'region' => $_SERVER['AWS_DEFAULT_REGION_3'],
+        'pathStyleEndpoint' => true,
+        'sendChunkedBody' => false
+    ],
+    httpClient: $s3HttpClient,
+    logger: new Logger('s3_3', [new StreamHandler('php://stderr')], [new PsrLogMessageProcessor()])
 );
 
 $uploader = new ReplicateUploader(
-    new S3Uploader($s3r1, $_SERVER['S3_BUCKET'], 'az/hprichbg/rb/', [
+    new S3Uploader($s3_1, $_SERVER['S3_BUCKET'], 'az/hprichbg/rb/', [
         'CacheControl' => 'max-age=31536000'
     ]),
-    new S3Uploader($s3r2, $_SERVER['S3_BUCKET_2'], 'az/hprichbg/rb/', [
+    new S3Uploader($s3_2, $_SERVER['S3_BUCKET_2'], 'az/hprichbg/rb/', [
         'CacheControl' => 'max-age=31536000',
         'ACL' => 'public-read'
-    ])
+    ]),
+    new S3Uploader($s3_3, $_SERVER['S3_BUCKET_3'], 'az/hprichbg/rb/', [])
 );
 
 $videoUploader = new ReplicateUploader(
-    new S3Uploader($s3r1, $_SERVER['S3_BUCKET'], 'videocontent/', [
+    new S3Uploader($s3_1, $_SERVER['S3_BUCKET'], 'videocontent/', [
         'CacheControl' => 'max-age=31536000'
     ]),
-    new S3Uploader($s3r2, $_SERVER['S3_BUCKET_2'], 'videocontent/', [
+    new S3Uploader($s3_2, $_SERVER['S3_BUCKET_2'], 'videocontent/', [
         'CacheControl' => 'max-age=31536000',
         'ACL' => 'public-read'
-    ])
+    ]),
+    new S3Uploader($s3_3, $_SERVER['S3_BUCKET_3'], 'videocontent/', [])
 );
 
 $specs = [
