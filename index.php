@@ -2,7 +2,6 @@
 
 namespace App;
 
-use AsyncAws\Core\HttpClient\AwsRetryStrategy;
 use AsyncAws\S3\S3Client;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -53,7 +52,7 @@ if ($httpClient instanceof LoggerAwareInterface) {
 $s3RetryCodes = GenericRetryStrategy::DEFAULT_RETRY_STATUS_CODES;
 $retryCodes[408] = GenericRetryStrategy::IDEMPOTENT_METHODS;
 $s3RetryCodes[404] = 404; // Bucket not found
-$s3HttpClient = new RetryableHttpClient($httpClient, new AwsRetryStrategy($s3RetryCodes), 3, $httpLogger);
+$s3HttpClient = new RetryableHttpClient($httpClient, new S3Track404($httpLogger, $s3RetryCodes), 3, $httpLogger);
 
 $s3_1 = new S3Client(
     [
