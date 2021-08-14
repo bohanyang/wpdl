@@ -80,19 +80,6 @@ $s3_2 = new S3Client(
     logger: new Logger('s3_2', [new StreamHandler('php://stderr')], [new PsrLogMessageProcessor()])
 );
 
-$s3_3 = new S3Client(
-    [
-        'endpoint' => $_SERVER['S3_ENDPOINT_3'],
-        'accessKeyId' => $_SERVER['AWS_ACCESS_KEY_ID_3'],
-        'accessKeySecret' => $_SERVER['AWS_SECRET_ACCESS_KEY_3'],
-        'region' => $_SERVER['AWS_DEFAULT_REGION_3'],
-        'pathStyleEndpoint' => true,
-        'sendChunkedBody' => false
-    ],
-    httpClient: $s3HttpClient,
-    logger: new Logger('s3_3', [new StreamHandler('php://stderr')], [new PsrLogMessageProcessor()])
-);
-
 $uploader = new ReplicateUploader(
     new S3Uploader($s3_1, $_SERVER['S3_BUCKET'], 'az/hprichbg/rb/', [
         'CacheControl' => 'max-age=31536000'
@@ -100,8 +87,7 @@ $uploader = new ReplicateUploader(
     new S3Uploader($s3_2, $_SERVER['S3_BUCKET_2'], 'az/hprichbg/rb/', [
         'CacheControl' => 'max-age=31536000',
         'ACL' => 'public-read'
-    ]),
-    new S3Uploader($s3_3, $_SERVER['S3_BUCKET_3'], 'az/hprichbg/rb/', [])
+    ])
 );
 
 $videoUploader = new ReplicateUploader(
@@ -111,8 +97,7 @@ $videoUploader = new ReplicateUploader(
     new S3Uploader($s3_2, $_SERVER['S3_BUCKET_2'], 'videocontent/', [
         'CacheControl' => 'max-age=31536000',
         'ACL' => 'public-read'
-    ]),
-    new S3Uploader($s3_3, $_SERVER['S3_BUCKET_3'], 'videocontent/', [])
+    ])
 );
 
 $specs = [
